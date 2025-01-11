@@ -7,6 +7,7 @@ import (
 	"api-service/workers"
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,6 +24,8 @@ func main() {
 	workers.StartWorkers(5)
 
 	router := gin.Default()
+	router.Use(cors.Default())
+
 	routes.RegisterRoutes(router)
 
 	log.Printf("Storing videos in %s for %d days", config.VideosDir, config.RetentionDays)
