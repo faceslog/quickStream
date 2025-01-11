@@ -1,25 +1,26 @@
 package controllers
 
 import (
-	"api-service/api/models"
-	"api-service/api/services"
 	"api-service/config"
+	"api-service/models"
 	"api-service/utils"
+	"api-service/workers"
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func PublishHandler(c *gin.Context) {
-
 	title := c.PostForm("title")
 	if title == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
 		return
 	}
 	if len(title) > 255 {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "title cannot exceed 255 characters"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title cannot exceed 255 characters"})
 		return
 	}
 
@@ -29,6 +30,7 @@ func PublishHandler(c *gin.Context) {
 		return
 	}
 
+	// Optional: Check size limits, folder usage, etc. as before...
 	if header.Size > config.MAX_FILE_SIZE {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "file size exceeds limit"})
 		return
@@ -49,21 +51,39 @@ func PublishHandler(c *gin.Context) {
 		}
 	}
 
-	video, status, err := services.HandlePublication(c, title)
+	// 1. Generate UUID
+	videoUuid := uuid.New().String()
+
+	// 2. Save file quickly to disk
+	extension, err := utils.CheckMimeType(header)
 	if err != nil {
-
-		if status == http.StatusInternalServerError {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Oops, something went wrong with that file."})
-			log.Printf("Failed to handle file publication: %v", err.Error())
-			return
-		}
-
-		c.JSON(status, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file MIME type"})
 		return
 	}
 
-	var uri string = utils.BuildURI(video.Uuid, video.Format)
-	c.JSON(http.StatusCreated, gin.H{"uuid": video.Uuid, "uri": uri})
+	filePath := filepath.Join(config.VideosDir, videoUuid+extension)
+	if err := c.SaveUploadedFile(header, filePath); err != nil {
+		log.Printf("failed to save file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+		return
+	}
+
+	// 3. Submit job to background
+	job := workers.Job{
+		VideoUuid: videoUuid,
+		Title:     title,
+		FilePath:  filePath,
+		Extension: extension[1:], // remove dot
+	}
+	workers.SubmitJob(job) // we'll define SubmitJob below
+
+	// 4. Immediately respond (202 Accepted or 201 Created)
+	//    Return a tracking ID so the client can check the status
+	c.JSON(http.StatusAccepted, gin.H{
+		"uuid":    videoUuid,
+		"status":  "processing",
+		"message": "File accepted for processing. Check back later.",
+	})
 }
 
 func GetVideosHandler(c *gin.Context) {

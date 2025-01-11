@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"api-service/api/controllers"
 	"api-service/config"
+	"api-service/controllers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +12,10 @@ func RegisterRoutes(router *gin.Engine) {
 	{
 		api.POST("/publish", controllers.PublishHandler)
 		api.GET("/videos", controllers.GetVideosHandler)
+		// Add the status route here:
+		api.GET("/status/:uuid", controllers.GetJobStatusHandler)
 	}
 
+	// Serve your videos if you want a static route
 	router.Static("/videos", config.VideosDir)
 }

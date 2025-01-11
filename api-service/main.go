@@ -1,9 +1,10 @@
 package main
 
 import (
-	"api-service/api/routes"
 	"api-service/config"
 	"api-service/db"
+	"api-service/routes"
+	"api-service/workers"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,8 @@ func main() {
 
 	port := config.Port
 	host := config.Host
+
+	workers.StartWorkers(5)
 
 	router := gin.Default()
 	routes.RegisterRoutes(router)
