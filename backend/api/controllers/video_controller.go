@@ -65,3 +65,15 @@ func PublishHandler(c *gin.Context) {
 	var uri string = utils.BuildURI(video.Uuid, video.Format)
 	c.JSON(http.StatusCreated, gin.H{"uuid": video.Uuid, "uri": uri})
 }
+
+func GetVideosHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	videos, err := models.GetVideos(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch videos"})
+		return
+	}
+
+	c.JSON(http.StatusOK, videos)
+}

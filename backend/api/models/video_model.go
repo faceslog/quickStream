@@ -2,6 +2,7 @@ package models
 
 import (
 	"api-service/db"
+	"api-service/utils"
 	"context"
 	"errors"
 	"fmt"
@@ -15,8 +16,9 @@ type Video struct {
 	Title      string `json:"title" binding:"required"`
 	Hash       string `json:"hash" binding:"required"`
 	Format     string `json:"format" binding:"required"`
-	FilePath   string `json:"filePath,omitempty"`
-	UploadedAt string `json:"uploadedAt"`
+	UploadedAt string `json:"uploadedAt" binding:"required"`
+	Uri        string `json:"uri"`
+	FilePath   string `json:"-"` // Excluded from JSON serialization
 }
 
 func validateVideoFormat(video *Video) error {
@@ -152,4 +154,40 @@ func DeleteOldFiles(requiredSpace int64, maxFolderSize int64, retentionDays int)
 	}
 
 	return nil
+}
+
+func GetVideos(ctx context.Context) ([]Video, error) {
+	query := `
+		SELECT uuid, title, hash, format, uploaded_at
+		FROM videos
+		ORDER BY uploaded_at DESC
+	`
+
+	rows, err := db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var videos []Video
+
+	for rows.Next() {
+		var video Video
+		var uploadedAt time.Time
+
+		if err := rows.Scan(&video.Uuid, &video.Title, &video.Hash, &video.Format, &uploadedAt); err != nil {
+			return nil, err
+		}
+
+		video.UploadedAt = uploadedAt.Format("2006-01-02 15:04:05")
+		video.Uri = utils.BuildURI(video.Uuid, video.Format)
+
+		videos = append(videos, video)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return videos, nil
 }

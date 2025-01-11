@@ -11,6 +11,7 @@ func RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 	{
 		api.POST("/publish", controllers.PublishHandler)
+		api.GET("/videos", controllers.GetVideosHandler)
 	}
 
 	router.Static("/videos", config.VideosDir)
