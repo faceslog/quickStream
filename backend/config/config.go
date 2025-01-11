@@ -4,22 +4,24 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
-// 1000 << 20 is equivalent to 5GB
+// 5000 << 20 is equivalent to 5GB
 var MAX_FILE_SIZE int64 = 5000 << 20
 
-// 10GB
-var MAX_FOLDER_SIZE int64 = 10000 << 20
+// 20GB
+var MAX_FOLDER_SIZE int64 = 20000 << 20
 
 var (
-	VideosDir string
-	PublicUri string
-	Host      string
-	Port      string
-	DbUrl     string
+	VideosDir     string
+	RetentionDays int
+	PublicUri     string
+	Host          string
+	Port          string
+	DbUrl         string
 )
 
 // list of supported extensions
@@ -44,6 +46,8 @@ func SetupEnv() {
 	if DbUrl == "" {
 		log.Fatal("DATABASE_URL is required")
 	}
+
+	RetentionDays, _ = strconv.Atoi(getEnv("RETENTIONS_DAYS", "7"))
 
 	Host = getEnv("HOST", "localhost")
 	Port = getEnv("PORT", "8080")

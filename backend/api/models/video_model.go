@@ -4,7 +4,9 @@ import (
 	"api-service/db"
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"os"
 	"time"
 )
 
@@ -81,4 +83,73 @@ func DoesHashExists(hash string) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func DeleteOldFiles(requiredSpace int64, maxFolderSize int64, retentionDays int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cutoffTime := time.Now().AddDate(0, 0, -retentionDays)
+
+	query := `
+		SELECT file_path
+		FROM videos
+		WHERE uploaded_at < $1
+		ORDER BY uploaded_at ASC
+	`
+
+	rows, err := db.Pool.Query(ctx, query, cutoffTime)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var filesToDelete []string
+	var totalSizeFreed int64
+
+	for rows.Next() {
+		var filePath string
+		if err := rows.Scan(&filePath); err != nil {
+			return err
+		}
+		filesToDelete = append(filesToDelete, filePath)
+	}
+
+	for _, filePath := range filesToDelete {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			log.Printf("Unable to access file %s: %v", filePath, err)
+			continue
+		}
+
+		fileSize := info.Size()
+
+		if err := os.Remove(filePath); err != nil {
+			log.Printf("Error deleting file %s: %v", filePath, err)
+			continue
+		}
+
+		log.Printf("Deleted file: %s (Size: %d bytes)", filePath, fileSize)
+		totalSizeFreed += fileSize
+
+		if totalSizeFreed >= requiredSpace {
+			break
+		}
+	}
+
+	for _, filePath := range filesToDelete {
+		_, err := db.Pool.Exec(ctx, `DELETE FROM videos WHERE file_path = $1`, filePath)
+		if err != nil {
+			log.Printf("Failed to delete record for file %s: %v", filePath, err)
+		} else {
+			log.Printf("Deleted database record for file: %s", filePath)
+		}
+	}
+
+	log.Printf("Total space freed: %d bytes", totalSizeFreed)
+	if totalSizeFreed < requiredSpace {
+		return fmt.Errorf("unable to free the required space (%d bytes); only %d bytes freed", requiredSpace, totalSizeFreed)
+	}
+
+	return nil
 }

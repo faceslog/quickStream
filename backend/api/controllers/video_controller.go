@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"api-service/api/models"
 	"api-service/api/services"
 	"api-service/config"
 	"api-service/utils"
@@ -40,8 +41,9 @@ func PublishHandler(c *gin.Context) {
 	}
 
 	if folderExceeds {
-		err := utils.DeleteOldFiles(header.Size)
+		err := models.DeleteOldFiles(header.Size, config.MAX_FOLDER_SIZE, config.RetentionDays)
 		if err != nil {
+			log.Printf("Error freeing up space %v: ", err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to free up space"})
 			return
 		}

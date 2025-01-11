@@ -4,6 +4,7 @@ import (
 	"api-service/api/routes"
 	"api-service/config"
 	"api-service/db"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,5 +22,6 @@ func main() {
 	router := gin.Default()
 	routes.RegisterRoutes(router)
 
+	log.Printf("Storing videos in %s for %d days", config.VideosDir, config.RetentionDays)
 	router.Run(host + ":" + port)
 }
