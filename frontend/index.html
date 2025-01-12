@@ -28,8 +28,13 @@
         </div>
     </main>
 
+    <!-- Loading Overlay (hidden by default) -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
+    </div>
+
     <footer class="w-full bg-gray-300 py-4 text-center text-white">
-        <p>© 2025 Quick Manager</p>
+        <p>© 2025 Faceslog</p>
     </footer>
 
     <script>
@@ -45,6 +50,9 @@
         async function uploadVideo() {
             const titleInput = document.getElementById('video-title');
             const fileInput = document.getElementById('video-file');
+            const uploadButton = document.querySelector('#upload-form button');
+            const overlay = document.getElementById('loading-overlay');
+
             const title = titleInput.value.trim();
             const file = fileInput.files[0];
 
@@ -58,22 +66,35 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('file', file);
+            // Disable the button + show loading overlay
+            uploadButton.disabled = true;
+            overlay.classList.remove('hidden');
 
-            const response = await fetch(`${API_BASE_URL}/publish`, {
-                method: 'POST',
-                body: formData,
-            });
+            try {
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('file', file);
 
-            if (response.ok) {
-                alert("Video uploaded successfully.");
-                titleInput.value = '';
-                fileInput.value = '';
-                loadVideos();
-            } else {
-                alert("Failed to upload video.");
+                const response = await fetch(`${API_BASE_URL}/publish`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    alert("Video uploaded successfully.");
+                    titleInput.value = '';
+                    fileInput.value = '';
+                    await loadVideos();
+                } else {
+                    alert("Failed to upload video.");
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                alert("An error occurred while uploading.");
+            } finally {
+                // Re-enable the button + hide loading overlay
+                uploadButton.disabled = false;
+                overlay.classList.add('hidden');
             }
         }
 
