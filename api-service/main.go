@@ -21,7 +21,7 @@ func main() {
 	port := config.Port
 	host := config.Host
 
-	workers.StartWorkers(5)
+	workers.StartWorkers(2)
 
 	router := gin.Default()
 	router.Use(cors.Default())

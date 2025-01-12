@@ -23,5 +23,5 @@ go.work
 .env
 .DS_Store
 mydb/
-videos/
+files/
 test.mp4

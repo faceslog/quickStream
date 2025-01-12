@@ -1,0 +1,58 @@
+networks:
+  internal:
+    # no external network for now
+
+services:
+  quickStreamdb:
+    image: postgres:15
+    container_name: quickStreamdb
+    environment:
+      POSTGRES_USER: quickStream
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: quickStream
+    volumes:
+      - ./mydb:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quickStream -h localhost || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  api-service:
+    build:
+      context: ./api-service
+      dockerfile: Dockerfile
+    container_name: quickStreamAPI
+    environment:
+      GIN_MODE: release
+      PORT: 8080
+      HOST: 0.0.0.0
+      PUBLIC_URI: http://localhost:3000
+      VIDEO_DIR: /app/files            # The API writes to /app/files
+      RETENTIONS_DAYS: 4
+      DATABASE_URL: postgres://quickStream:password@quickStreamdb:5432/quickStream
+    volumes:
+      - ./files:/app/files            # <-- same host folder
+    networks:
+      - internal
+    depends_on:
+      quickStreamdb:
+        condition: service_healthy
+
+  nginx-frontend:
+    image: nginx:alpine
+    container_name: quickStreamUI
+    ports:
+      - "3000:80"
+    # Mount both the frontend static and the 'files' directory
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./files:/usr/share/nginx/files  # <-- mount the same files folder here
+    networks:
+      - internal
+    depends_on:
+      - api-service
