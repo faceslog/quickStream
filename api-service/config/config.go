@@ -24,6 +24,8 @@ var (
 	DbUrl         string
 )
 
+var ThumbnailFormat = ".jpg"
+
 // list of supported extensions
 var AllowedMimeTypes = map[string]string{
 	"video/mp4": ".mp4",

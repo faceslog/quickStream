@@ -81,6 +81,12 @@ func processJob(job Job) {
 		return
 	}
 
+	err = utils.GenerateThumbnail(job.FilePath, utils.GenerateThumbnailPath(job.VideoUuid))
+	if err != nil {
+		log.Printf("[Worker] Failed to generate thumbnail for %s: %v", job.VideoUuid, err)
+		// TODO Handle thumbnail generation failure (log or retry logic)
+	}
+
 	log.Printf("[Worker] Successfully processed job for VideoUuid=%s", job.VideoUuid)
 }
 

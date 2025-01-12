@@ -118,12 +118,17 @@ func DeleteVideoHandler(c *gin.Context) {
 		return
 	}
 
-	// Remove file from disk
 	err = os.Remove(video.FilePath)
 	if err != nil {
-		// If file is missing or locked, log the error
 		log.Printf("Error removing file from disk: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete the file from disk"})
+		return
+	}
+
+	err = os.Remove(utils.GenerateThumbnailPath(video.Uuid))
+	if err != nil {
+		log.Printf("Error removing thumbnail from disk: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to properly delete disk"})
 		return
 	}
 

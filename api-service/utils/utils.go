@@ -66,6 +66,10 @@ func HashString(input string) string {
 	return base64.StdEncoding.EncodeToString(hasher.Sum(nil))
 }
 
-func BuildURI(uuid string, format string) string {
+func BuildVideoURI(uuid string, format string) string {
 	return config.PublicUri + "/files/" + uuid + "." + format
+}
+
+func BuildThumbnailURI(uuid string) string {
+	return config.PublicUri + "/files/" + uuid + config.ThumbnailFormat
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Manager</title>
+    <title>Quick Stream</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center">
@@ -100,12 +100,18 @@
             const videos = await fetchVideos();
 
             videos.forEach(video => {
+                console.log(video);
                 const videoBox = document.createElement('div');
                 videoBox.className = 'bg-white shadow-md rounded-lg p-4 flex flex-col items-center';
 
                 const title = document.createElement('h2');
                 title.className = 'text-lg font-semibold text-gray-800';
                 title.innerText = video.title || "Untitled Video";
+
+                const thumbnail = document.createElement('img');
+                thumbnail.className = 'w-full h-40 object-cover rounded mt-4';
+                thumbnail.src = video.thumbnail || 'https://via.placeholder.com/150';
+                thumbnail.alt = `${video.title || "Video Thumbnail"}`;
 
                 const uploadDate = document.createElement('p');
                 uploadDate.className = 'text-gray-500 text-center mt-2';
@@ -122,6 +128,7 @@
                 deleteButton.onclick = () => deleteVideo(video.uuid);
 
                 videoBox.appendChild(title);
+                videoBox.appendChild(thumbnail);
                 videoBox.appendChild(uploadDate);
                 videoBox.appendChild(watchButton);
                 videoBox.appendChild(deleteButton);

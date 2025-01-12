@@ -18,6 +18,7 @@ type Video struct {
 	Format     string `json:"format" binding:"required"`
 	UploadedAt string `json:"uploadedAt" binding:"required"`
 	Uri        string `json:"uri"`
+	Thumbnail  string `json:"thumbnail"`
 	FilePath   string `json:"-"` // Excluded from JSON serialization
 }
 
@@ -27,7 +28,7 @@ func validateVideoFormat(video *Video) error {
 	}
 
 	if video.Uuid == "" || video.Title == "" || video.Hash == "" || video.Format == "" || video.FilePath == "" {
-		return errors.New("video uuid, uri, format and hash are required")
+		return errors.New("missing required fields")
 	}
 
 	return nil
@@ -94,7 +95,7 @@ func DeleteOldFiles(requiredSpace int64, maxFolderSize int64, retentionDays int)
 	cutoffTime := time.Now().AddDate(0, 0, -retentionDays)
 
 	query := `
-		SELECT file_path
+		SELECT uuid, file_path
 		FROM videos
 		WHERE uploaded_at < $1
 		ORDER BY uploaded_at ASC
@@ -106,32 +107,50 @@ func DeleteOldFiles(requiredSpace int64, maxFolderSize int64, retentionDays int)
 	}
 	defer rows.Close()
 
-	var filesToDelete []string
+	var filesToDelete []struct {
+		UUID     string
+		FilePath string
+	}
 	var totalSizeFreed int64
 
 	for rows.Next() {
+		var uuid string
 		var filePath string
-		if err := rows.Scan(&filePath); err != nil {
+		if err := rows.Scan(&uuid, &filePath); err != nil {
 			return err
 		}
-		filesToDelete = append(filesToDelete, filePath)
+
+		filesToDelete = append(filesToDelete, struct {
+			UUID     string
+			FilePath string
+		}{UUID: uuid, FilePath: filePath})
 	}
 
-	for _, filePath := range filesToDelete {
-		info, err := os.Stat(filePath)
+	for _, file := range filesToDelete {
+
+		info, err := os.Stat(file.FilePath)
 		if err != nil {
-			log.Printf("Unable to access file %s: %v", filePath, err)
+			log.Printf("Unable to access file %s: %v", file.FilePath, err)
 			continue
 		}
 
 		fileSize := info.Size()
 
-		if err := os.Remove(filePath); err != nil {
-			log.Printf("Error deleting file %s: %v", filePath, err)
+		// Delete the video file
+		if err := os.Remove(file.FilePath); err != nil {
+			log.Printf("Error deleting file %s: %v", file.FilePath, err)
 			continue
 		}
 
-		log.Printf("Deleted file: %s (Size: %d bytes)", filePath, fileSize)
+		thumbnailPath := utils.GenerateThumbnailPath(file.UUID)
+		if err := os.Remove(thumbnailPath); err != nil {
+			log.Printf("Error deleting thumbnail %s: %v", thumbnailPath, err)
+		}
+
+		log.Printf("Deleted file: %s (Size: %d bytes) and thumbnail", file.FilePath, fileSize)
+
+		// TODO Count the thumbnail size as well in the freed space but for now we dont care as
+		// its not significant
 		totalSizeFreed += fileSize
 
 		if totalSizeFreed >= requiredSpace {
@@ -139,12 +158,12 @@ func DeleteOldFiles(requiredSpace int64, maxFolderSize int64, retentionDays int)
 		}
 	}
 
-	for _, filePath := range filesToDelete {
-		_, err := db.Pool.Exec(ctx, `DELETE FROM videos WHERE file_path = $1`, filePath)
+	for _, file := range filesToDelete {
+		_, err := db.Pool.Exec(ctx, `DELETE FROM videos WHERE uuid = $1`, file.UUID)
 		if err != nil {
-			log.Printf("Failed to delete record for file %s: %v", filePath, err)
+			log.Printf("Failed to delete record for file %s: %v", file.UUID, err)
 		} else {
-			log.Printf("Deleted database record for file: %s", filePath)
+			log.Printf("Deleted database record for file: %s", file.UUID)
 		}
 	}
 
@@ -180,7 +199,8 @@ func GetVideos(ctx context.Context) ([]Video, error) {
 		}
 
 		video.UploadedAt = uploadedAt.Format("2006-01-02 15:04:05")
-		video.Uri = utils.BuildURI(video.Uuid, video.Format)
+		video.Uri = utils.BuildVideoURI(video.Uuid, video.Format)
+		video.Thumbnail = utils.BuildThumbnailURI(video.Uuid)
 
 		videos = append(videos, video)
 	}
@@ -209,7 +229,8 @@ func GetVideoByUUID(ctx context.Context, uuid string) (Video, error) {
 	}
 
 	video.UploadedAt = uploadedAt.Format("2006-01-02 15:04:05")
-	video.Uri = utils.BuildURI(video.Uuid, video.Format)
+	video.Uri = utils.BuildVideoURI(video.Uuid, video.Format)
+	video.Thumbnail = utils.BuildThumbnailURI(video.Uuid)
 	return video, nil
 }
 
