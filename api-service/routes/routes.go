@@ -11,11 +11,11 @@ func RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 	{
 		api.POST("/publish", controllers.PublishHandler)
+		api.DELETE("/delete/:uuid", controllers.DeleteVideoHandler)
+
 		api.GET("/videos", controllers.GetVideosHandler)
-		// Add the status route here:
 		api.GET("/status/:uuid", controllers.GetJobStatusHandler)
 	}
 
-	// Serve your videos if you want a static route
-	router.Static("/videos", config.VideosDir)
+	router.Static("/files", config.VideosDir)
 }

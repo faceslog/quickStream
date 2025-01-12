@@ -191,3 +191,33 @@ func GetVideos(ctx context.Context) ([]Video, error) {
 
 	return videos, nil
 }
+
+func GetVideoByUUID(ctx context.Context, uuid string) (Video, error) {
+	query := `
+        SELECT uuid, title, hash, format, file_path, uploaded_at
+        FROM videos
+        WHERE uuid = $1
+        LIMIT 1
+    `
+	row := db.Pool.QueryRow(ctx, query, uuid)
+
+	var video Video
+	var uploadedAt time.Time
+	err := row.Scan(&video.Uuid, &video.Title, &video.Hash, &video.Format, &video.FilePath, &uploadedAt)
+	if err != nil {
+		return Video{}, err
+	}
+
+	video.UploadedAt = uploadedAt.Format("2006-01-02 15:04:05")
+	video.Uri = utils.BuildURI(video.Uuid, video.Format)
+	return video, nil
+}
+
+func DeleteVideo(ctx context.Context, uuid string) error {
+	query := `
+        DELETE FROM videos
+        WHERE uuid = $1
+    `
+	_, err := db.Pool.Exec(ctx, query, uuid)
+	return err
+}

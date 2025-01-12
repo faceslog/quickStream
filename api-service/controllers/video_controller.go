@@ -7,6 +7,7 @@ import (
 	"api-service/workers"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
@@ -75,7 +76,7 @@ func PublishHandler(c *gin.Context) {
 		FilePath:  filePath,
 		Extension: extension[1:], // remove dot
 	}
-	workers.SubmitJob(job) // we'll define SubmitJob below
+	workers.SubmitJob(job)
 
 	// 4. Immediately respond (202 Accepted or 201 Created)
 	//    Return a tracking ID so the client can check the status
@@ -96,4 +97,35 @@ func GetVideosHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, videos)
+}
+
+func DeleteVideoHandler(c *gin.Context) {
+	videoUUID := c.Param("uuid")
+
+	// 1. Retrieve the video from DB to get the file path
+	video, err := models.GetVideoByUUID(c.Request.Context(), videoUUID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "video not found"})
+		return
+	}
+
+	// Delete the record from the database
+	err = models.DeleteVideo(c.Request.Context(), videoUUID)
+	if err != nil {
+		// If DB deletion fails ?? drama ??
+		log.Printf("Error removing video record from DB: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete the database record"})
+		return
+	}
+
+	// Remove file from disk
+	err = os.Remove(video.FilePath)
+	if err != nil {
+		// If file is missing or locked, log the error
+		log.Printf("Error removing file from disk: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete the file from disk"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "video deleted successfully"})
 }

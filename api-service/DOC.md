@@ -112,7 +112,7 @@ Aucun paramètre particulier dans l’URL ou le body.
       "hash": "abcdef1234567890...",
       "format": "mp4",
       "uploadedAt": "2025-01-10 15:00:00",
-      "uri": "http://localhost:8080/videos/9b26bb90-xxxx-xxxx-xxxx-aaaaaaaaaaaa.mp4"
+      "uri": "http://localhost:8080/files/9b26bb90-xxxx-xxxx-xxxx-aaaaaaaaaaaa.mp4"
     },
     ...
   ]
@@ -167,4 +167,4 @@ GET /api/status/:uuid
 - **hash** (string) : hash unique du fichier pour détecter les doublons.  
 - **format** (string) : format/extension du fichier (ex. `mp4`).  
 - **uploadedAt** (string, format datetime) : date d’upload.  
-- **uri** (string) : lien direct pour accéder à la vidéo via `router.Static("/videos", config.VideosDir)`.
+- **uri** (string) : lien direct pour accéder à la vidéo via `router.Static("/files", config.VideosDir)`.

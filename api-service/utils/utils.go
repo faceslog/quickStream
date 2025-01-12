@@ -67,5 +67,5 @@ func HashString(input string) string {
 }
 
 func BuildURI(uuid string, format string) string {
-	return config.PublicUri + "/videos/" + uuid + "." + format
+	return config.PublicUri + "/files/" + uuid + "." + format
 }
