@@ -134,7 +134,7 @@
 
                 const thumbnail = document.createElement('img');
                 thumbnail.className = 'w-full h-40 object-cover rounded mt-4';
-                thumbnail.src = video.thumbnail || 'https://via.placeholder.com/150';
+                thumbnail.src = video.thumbnail;
                 thumbnail.alt = `${video.title || "Video Thumbnail"}`;
 
                 const uploadDate = document.createElement('p');
